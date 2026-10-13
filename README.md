@@ -95,6 +95,15 @@ switch you back on its own. Clear the Google app's data (Settings > Apps >
 Google > Storage > Clear data), then reopen it and run Assistant setup again.
 With the flag forced off, setup now lands on classic Google Assistant.
 
+The classic Assistant setup wizard is buried once Gemini is active. You can
+open it directly from a root shell:
+
+```bash
+su -c "am start -n com.google.android.googlequicksearchbox/com.google.android.apps.gsa.staticplugins.opa.setupwizard.SetupWizardActivity"
+```
+
+That activity name is specific to Google app 17.59.18.
+
 ## How it works
 
 See [`src/com/atd/sunsethook/Hook.java`](src/com/atd/sunsethook/Hook.java)
