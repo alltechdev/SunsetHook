@@ -1,7 +1,5 @@
 package com.atd.sunsethook;
 
-import android.content.Context;
-import android.content.pm.PackageInfo;
 import android.os.Binder;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -16,16 +14,16 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
  * Scope "com.google.android.googlequicksearchbox": forces the Assistant
  * "Sunset" flag (com.google.android.libraries.search.device / 45798734, read
  * via the static helper hcvl.L(hbhk)) to false, so opted-out users are no
- * longer routed into Gemini onboarding. The obfuscated names are specific to
- * version 17.59.18, which ships the same classes.dex across every architecture.
+ * longer routed into Gemini onboarding.
  *
- * The arm64-v8a standalone build (versionCode 301808679) is matched directly
- * and hooked immediately at load time, exactly as the original release did, so
- * that proven path is unchanged. Any other build is confirmed to be a 17.59.18
- * build by its versionName (which needs an app Context, so it is read at
- * Application.attach) before the same hook is installed; this adds armeabi-v7a
- * and x86_64 without touching the arm64 path. Any other version is skipped
- * rather than risk hooking the wrong method.
+ * The hook is installed immediately at load time, in every Google app process,
+ * before any app code runs. The target hcvl.L(hbhk) symbol only exists in
+ * Google app 17.59.18, whose classes.dex is identical across every
+ * architecture (arm64-v8a, armeabi-v7a, x86_64), so the hook attaches on
+ * exactly that build and is a harmless no-op on any other version. Hooking at
+ * load time (rather than later, at Application.attach) closes the startup
+ * window where the flag could otherwise be read before the hook was in place
+ * and briefly route the user to Gemini.
  *
  * Scope "android" (system_server): refuses install sessions for the Google
  * app unless they come from root or shell, so the Play Store cannot replace
@@ -33,75 +31,26 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
  */
 public class Hook implements IXposedHookLoadPackage {
     private static final String GSA = "com.google.android.googlequicksearchbox";
-    private static final long ARM64_PINNED_VERSION = 301808679L;
-    private static final String TARGET_VERSION = "17.59.18";
     private static final int ROOT_UID = 0;
     private static final int SHELL_UID = 2000;
 
     @Override
-    public void handleLoadPackage(final XC_LoadPackage.LoadPackageParam lpparam) {
+    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
         if (GSA.equals(lpparam.packageName)) {
-            if (versionCodeOf(lpparam) == ARM64_PINNED_VERSION) {
-                // Original, device-proven arm64 path: hook immediately at load time.
-                hookSunset(lpparam, "versionCode " + ARM64_PINNED_VERSION);
-            } else {
-                // Other architectures of the same version: confirm by versionName first.
-                hookSunsetWhenReady(lpparam);
-            }
+            hookSunset(lpparam);
         } else if ("android".equals(lpparam.packageName)) {
             hookInstallBlock(lpparam);
         }
     }
 
-    /** Installs the flag hook now. Used for the arm64 build, unchanged from the first release. */
-    private static void hookSunset(XC_LoadPackage.LoadPackageParam lpparam, String why) {
+    private static void hookSunset(XC_LoadPackage.LoadPackageParam lpparam) {
         try {
             XposedHelpers.findAndHookMethod("hcvl", lpparam.classLoader, "L", "hbhk",
                     new ForceFalse(lpparam.processName));
-            XposedBridge.log("SunsetHook: hooked hcvl.L in " + lpparam.processName + " (" + why + ")");
+            XposedBridge.log("SunsetHook: hooked hcvl.L in " + lpparam.processName);
         } catch (Throwable t) {
-            XposedBridge.log("SunsetHook: hook failed in " + lpparam.processName + ": " + t);
-        }
-    }
-
-    /**
-     * ApplicationInfo does not carry the versionName, so for non-arm64 builds we
-     * wait for Application.attach(Context), read the versionName from the app's
-     * own PackageManager, and install the same hook only if it is a 17.59.18
-     * build. The hcvl class is already on the app class loader by this point.
-     */
-    private static void hookSunsetWhenReady(final XC_LoadPackage.LoadPackageParam lpparam) {
-        XposedHelpers.findAndHookMethod("android.app.Application", lpparam.classLoader, "attach",
-                Context.class, new XC_MethodHook() {
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) {
-                Context ctx = (Context) param.args[0];
-                String version = versionNameOf(ctx);
-                if (version == null || !version.startsWith(TARGET_VERSION)) {
-                    XposedBridge.log("SunsetHook: skipping " + lpparam.processName + ", versionName "
-                            + version + " is not a " + TARGET_VERSION + " build");
-                    return;
-                }
-                hookSunset(lpparam, "versionName " + version);
-            }
-        });
-    }
-
-    private static long versionCodeOf(XC_LoadPackage.LoadPackageParam lpparam) {
-        try {
-            Object v = XposedHelpers.getObjectField(lpparam.appInfo, "longVersionCode");
-            return ((Number) v).longValue();
-        } catch (Throwable t) {
-            return -1;
-        }
-    }
-
-    private static String versionNameOf(Context ctx) {
-        try {
-            PackageInfo pi = ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0);
-            return pi.versionName;
-        } catch (Throwable t) {
-            return null;
+            XposedBridge.log("SunsetHook: hcvl.L not found in " + lpparam.processName
+                    + " (not a 17.59.18 build?), skipping");
         }
     }
 

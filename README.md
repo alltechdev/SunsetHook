@@ -20,9 +20,11 @@ The module has two scopes:
   into Gemini onboarding. The flag is read through an obfuscated static helper
   (`hcvl.L(hbhk)`, flag `45798734`). These obfuscated names are specific to
   **Google app 17.59.18**, which ships the same `classes.dex` on every
-  architecture (arm64-v8a, armeabi-v7a, x86_64). The hook is gated on the
-  `versionName` starting with `17.59.18`, so it runs on all of those builds and
-  **skips any other version** rather than risk hooking the wrong method.
+  architecture (arm64-v8a, armeabi-v7a, x86_64). The hook is installed at load
+  time, before any app code runs, and attaches only where that symbol is
+  present, so it runs on all 17.59.18 builds and is a harmless no-op on any
+  other version. Hooking at load time (rather than later) closes the startup
+  window where the flag could otherwise be read before the hook was in place.
 
 - **`android` (system_server)**: refuses new install sessions for the Google
   app unless they come from root (uid 0) or shell (uid 2000). This stops the
