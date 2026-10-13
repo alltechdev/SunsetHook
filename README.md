@@ -16,8 +16,10 @@ The module has two scopes:
   Assistant "Sunset" feature flag off, so opted-out users are no longer routed
   into Gemini onboarding. The flag is read through an obfuscated static helper
   (`hcvl.L(hbhk)`, flag `45798734`). These obfuscated names are specific to
-  **versionCode 301808679 (Google app 17.59.18)**, so the hook deliberately
-  **skips any other build** rather than risk hooking the wrong method.
+  **Google app 17.59.18**, which ships the same `classes.dex` on every
+  architecture (arm64-v8a, armeabi-v7a, x86_64). The hook is gated on the
+  `versionName` starting with `17.59.18`, so it runs on all of those builds and
+  **skips any other version** rather than risk hooking the wrong method.
 
 - **`android` (system_server)**: refuses new install sessions for the Google
   app unless they come from root (uid 0) or shell (uid 2000). This stops the
@@ -27,8 +29,9 @@ The module has two scopes:
 ## Requirements
 
 - A rooted device with **LSPosed** or **Vector** (or another Xposed framework, API 82+).
-- The Google app pinned at **versionCode 301808679 (17.59.18)**. On any other
-  version the flag hook no-ops (check `logcat` for `SunsetHook:` lines).
+- The Google app pinned at **17.59.18** (any architecture: arm64-v8a,
+  armeabi-v7a, or x86_64). On any other version the flag hook no-ops (check
+  `logcat` for `SunsetHook:` lines).
 - Scopes to enable in LSPosed: **Google app** and **System Framework**
   (`android`). A reboot after enabling is recommended.
 
@@ -92,7 +95,8 @@ framework at runtime).
 ## Notes & caveats
 
 - Obfuscated symbol names change between Google app versions. This module is
-  intentionally tied to one build and will not adapt itself to others.
+  intentionally tied to the 17.59.18 version (all architectures share its
+  `classes.dex`) and will not adapt itself to other versions.
 - This project is not affiliated with or endorsed by Google. "Google",
   "Google Assistant", and "Gemini" are trademarks of Google LLC. The Google app
   itself is not distributed here.
