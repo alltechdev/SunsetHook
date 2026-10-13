@@ -90,6 +90,11 @@ show the Gemini setup flow even when you choose Google. That is expected. With
 the module active and the Sunset flag forced off, classic Google Assistant
 becomes the active assistant once you finish setup.
 
+If Gemini is already set up as your assistant, forcing the flag off does not
+switch you back on its own. Clear the Google app's data (Settings > Apps >
+Google > Storage > Clear data), then reopen it and run Assistant setup again.
+With the flag forced off, setup now lands on classic Google Assistant.
+
 ## How it works
 
 See [`src/com/atd/sunsethook/Hook.java`](src/com/atd/sunsethook/Hook.java)
