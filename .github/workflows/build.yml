@@ -1,0 +1,84 @@
+name: Build signed APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      - name: Install build tools
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Resolve tool paths
+        run: |
+          echo "ANDROID_JAR=$ANDROID_HOME/platforms/android-34/android.jar" >> "$GITHUB_ENV"
+          echo "$ANDROID_HOME/build-tools/34.0.0" >> "$GITHUB_PATH"
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > key.jks
+
+      - name: Build APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          rm -rf build && mkdir -p build/stubs build/classes build/dex
+          javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR" \
+            -d build/stubs $(find stubs -name '*.java')
+          javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR" \
+            -cp build/stubs -d build/classes $(find src -name '*.java')
+          d8 --min-api 29 --lib "$ANDROID_JAR" --classpath build/stubs \
+            --output build/dex $(find build/classes -name '*.class')
+          aapt2 link -I "$ANDROID_JAR" --manifest AndroidManifest.xml \
+            -A assets -o build/unsigned.apk
+          (cd build/dex && zip -q ../unsigned.apk classes.dex)
+          zipalign -f 4 build/unsigned.apk build/aligned.apk
+          apksigner sign --ks key.jks \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out SunsetHook.apk build/aligned.apk
+          apksigner verify --print-certs SunsetHook.apk
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f key.jks
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SunsetHook
+          path: SunsetHook.apk
+
+      - name: Attach APK to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SunsetHook.apk

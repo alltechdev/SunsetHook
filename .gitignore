@@ -1,0 +1,14 @@
+# Build output
+build/
+*.apk
+*.idsig
+
+# Signing key (generate your own — see README)
+key.jks
+
+# Large proprietary Google app APKs (not ours to distribute)
+com.google.android.googlequicksearchbox-*.apk
+
+# OS / editor cruft
+.DS_Store
+*.swp

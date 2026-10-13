@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.atd.sunsethook"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="34" />
+
+    <application android:label="SunsetHook" android:hasCode="true">
+        <meta-data android:name="xposedmodule" android:value="true" />
+        <meta-data android:name="xposeddescription" android:value="Keeps Google Assistant on Google app 17.59.18: forces the Sunset flag off and blocks Play Store updates of the Google app" />
+        <meta-data android:name="xposedminversion" android:value="82" />
+    </application>
+</manifest>
