@@ -6,7 +6,10 @@ on the Google app, instead of being sunset into Gemini onboarding.
 Google is phasing out the classic Assistant and routing users into Gemini. If
 you deliberately stay on an older Google app build, a server-side "Sunset" flag
 and silent Play Store updates can still take Assistant away from you. SunsetHook
-pins you in place.
+pins you in place. It also restores the ability to set up and use classic Google
+Assistant on a device where Gemini has already taken over: the setup flow is
+still the genuine Gemini setup, but with the Sunset flag forced off you end up on
+classic Google Assistant once that setup finishes.
 
 ## What it does
 
@@ -81,6 +84,11 @@ adb install SunsetHook.apk   # or install the APK on-device
 ```
 
 Then enable the module in LSPosed, select the two scopes above, and reboot.
+
+Setup note: when you go through Assistant setup, the voice setup screen will
+show the Gemini setup flow even when you choose Google. That is expected. With
+the module active and the Sunset flag forced off, classic Google Assistant
+becomes the active assistant once you finish setup.
 
 ## How it works
 
